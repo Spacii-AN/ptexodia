@@ -92,12 +92,13 @@ If you prefer to install manually:
    pip install -r requirements.txt
    ```
 
-3. (Optional) Create a virtual environment:
+3. (Optional) Create a virtual environment for isolated dependencies:
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    pip install -r requirements.txt
    ```
+   *Note: The launcher scripts automatically handle virtual environments, so this step is optional.*
 
 ## Configuration
 
@@ -284,11 +285,12 @@ The launcher will automatically:
 python pt-macro.py
 ```
 
-**Option 3: Using virtual environment**
+**Option 3: Using virtual environment (if you created one manually)**
 ```bash
 ./venv/bin/python pt-macro.py  # Linux/macOS
 venv\Scripts\python pt-macro.py  # Windows
 ```
+*Note: The launcher scripts automatically create and use a virtual environment, so this is only needed if you created one manually.*
 
 ### Controls
 
@@ -353,9 +355,10 @@ PTmacro/
 ├── launch.sh           # Linux launcher (double-click or ./launch.sh)
 ├── launch.command      # macOS launcher (double-click to run)
 ├── BUTTON_REFERENCE.md # Complete reference of all available buttons and keys
-├── venv/              # Virtual environment (created automatically by launcher)
 └── README.md          # This file
 ```
+
+*Note: The launcher scripts automatically create a virtual environment (venv/) when needed, but it's not included in the repository.*
 
 ## Technical Details
 
