@@ -82,13 +82,28 @@ jobs:
           # Verify files exist
           ls -lh pt-macro pt-macro-gui
 
-      - name: Upload artifact
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}-executable
           path: |
-            ${{ matrix.exe-name }}
-            pt-macro-gui*
+            pt-macro.exe
+            pt-macro-gui.exe
+            requirements.txt
+            README.md
+            BUTTON_REFERENCE.md
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload artifact (macOS/Linux)
+        if: matrix.os != 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}-executable
+          path: |
+            pt-macro
+            pt-macro-gui
             requirements.txt
             README.md
             BUTTON_REFERENCE.md
