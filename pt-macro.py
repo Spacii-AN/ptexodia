@@ -43,10 +43,30 @@ def get_side_mouse_button(button_number=1):
     pynput uses button8/button9 for side mouse buttons on all platforms.
     button_number: 1 for first side button (x1/button8), 2 for second side button (x2/button9)
     """
-    if button_number == 1:
-        return Button.button8  # First side mouse button (x1)
-    else:  # button_number == 2
-        return Button.button9  # Second side mouse button (x2)
+    try:
+        if button_number == 1:
+            # Try button8 first (most common)
+            if hasattr(Button, 'button8'):
+                return Button.button8
+            # Fallback to x1 if button8 doesn't exist
+            elif hasattr(Button, 'x1'):
+                return Button.x1
+            else:
+                # Last resort: return string that will be matched in on_click
+                return 'x1'
+        else:  # button_number == 2
+            # Try button9 first (most common)
+            if hasattr(Button, 'button9'):
+                return Button.button9
+            # Fallback to x2 if button9 doesn't exist
+            elif hasattr(Button, 'x2'):
+                return Button.x2
+            else:
+                # Last resort: return string that will be matched in on_click
+                return 'x2'
+    except (AttributeError, TypeError) as e:
+        # If all else fails, return string representation
+        return 'x1' if button_number == 1 else 'x2'
 
 
 # ============================================================================
@@ -56,16 +76,31 @@ def get_side_mouse_button(button_number=1):
 # Enable/disable alternative macro button (second side mouse button)
 ENABLE_MACRO_ALT = True  # Set to False to disable the second side mouse button
 
+# Initialize KEYBINDS with side mouse buttons (lazy evaluation to handle platform differences)
 KEYBINDS = {
     'melee': 'e',
     'jump': Key.space,
     'aim': Button.right,
     'fire': Button.left,
     'emote': '.',
-    'macro': get_side_mouse_button(1),  # First side mouse button (x1/button8) - cross-platform
-    'macro_alt': get_side_mouse_button(2) if ENABLE_MACRO_ALT else None,  # Second side mouse button (x2/button9) - set ENABLE_MACRO_ALT = False to disable
+    'macro': None,  # Will be set below
+    'macro_alt': None if not ENABLE_MACRO_ALT else None,  # Will be set below if enabled
     'rapid_click': 'j',  # New keybind for rapid click macro
 }
+
+# Set side mouse buttons (handle platform differences safely)
+try:
+    KEYBINDS['macro'] = get_side_mouse_button(1)
+except (AttributeError, TypeError):
+    # Fallback: use x1 string which pynput should handle
+    KEYBINDS['macro'] = 'x1'
+
+if ENABLE_MACRO_ALT:
+    try:
+        KEYBINDS['macro_alt'] = get_side_mouse_button(2)
+    except (AttributeError, TypeError):
+        # Fallback: use x2 string which pynput should handle
+        KEYBINDS['macro_alt'] = 'x2'
 
 # ============================================================================
 # TIMING CONFIGURATION - Adjust these values to fine-tune the macro
@@ -381,25 +416,53 @@ def on_release(key):
 
 def on_click(x, y, button, pressed):
     """Handle mouse click events."""
-    global running, macro_enabled, warframe_active
+    global running, macro_enabled, warframe_active, button_held, rapid_clicking
     
     try:
         warframe_active = is_warframe_active()
         if not warframe_active:
             return
-            
-        # Check for contagion macro key (mouse button)
-        # Check for contagion macro key (side mouse buttons)
+        
         macro_button = KEYBINDS.get('macro')
-        macro_alt_button = KEYBINDS.get('macro_alt')
-        if button == macro_button or (ENABLE_MACRO_ALT and macro_alt_button and button == macro_alt_button):
-            if pressed and not running and macro_enabled:
-                running = True
-                thread = threading.Thread(target=contagion_loop)
-                thread.daemon = True
-                thread.start()
-            elif not pressed and running:
-                running = False
+        macro_alt_button = KEYBINDS.get('macro_alt') if ENABLE_MACRO_ALT else None
+        
+        # Handle string-based button names (fallback for Windows) and Button enum comparisons
+        def button_matches(btn, target):
+            if btn == target:
+                return True
+            # Handle string fallbacks (x1, x2)
+            if isinstance(target, str):
+                btn_str = str(btn).lower()
+                if 'x1' in target.lower() and ('x1' in btn_str or 'button8' in btn_str or 'side' in btn_str):
+                    return True
+                if 'x2' in target.lower() and ('x2' in btn_str or 'button9' in btn_str):
+                    return True
+            # Also check if target is a Button enum and compare string representations
+            btn_str = str(btn).lower()
+            target_str = str(target).lower()
+            if 'x1' in target_str and ('x1' in btn_str or 'button8' in btn_str):
+                return True
+            if 'x2' in target_str and ('x2' in btn_str or 'button9' in btn_str):
+                return True
+            return False
+        
+        if pressed:
+            # Check if the pressed button matches our macro button
+            if button_matches(button, macro_button) or (ENABLE_MACRO_ALT and macro_alt_button and button_matches(button, macro_alt_button)):
+                if not running and macro_enabled:
+                    with button_held_lock:
+                        button_held = True
+                    running = True
+                    thread = threading.Thread(target=contagion_loop)
+                    thread.daemon = True
+                    thread.start()
+        elif not pressed:
+            # Button released
+            if button_matches(button, macro_button) or (ENABLE_MACRO_ALT and macro_alt_button and button_matches(button, macro_alt_button)):
+                with button_held_lock:
+                    button_held = False
+                if running:
+                    running = False
     except AttributeError:
         pass
 
