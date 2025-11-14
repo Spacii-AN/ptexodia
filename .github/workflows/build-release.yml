@@ -8,6 +8,9 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: read  # Required to checkout code
+    
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
@@ -87,6 +90,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write  # Required to create releases
     
     steps:
       - name: Checkout code
