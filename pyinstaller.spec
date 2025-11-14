@@ -10,6 +10,7 @@ a = Analysis(
     hiddenimports=[
         'pynput.keyboard',
         'pynput.mouse',
+        'pynput',
         'psutil',
         'win32api',
         'win32con',

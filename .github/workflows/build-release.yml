@@ -45,10 +45,10 @@ jobs:
       - name: Build executable (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # Build CLI version
-          pyinstaller --onefile --console --name pt-macro --add-data "requirements.txt;." pt-macro.py
-          # Build GUI version (include pt-macro.py)
-          pyinstaller --onefile --windowed --name pt-macro-gui --add-data "requirements.txt;." --add-data "pt-macro.py;." pt-macro-gui.py
+          # Build CLI version using spec file
+          pyinstaller --clean pyinstaller.spec
+          # Build GUI version using spec file
+          pyinstaller --clean pyinstaller-gui.spec
           # Copy to root for easier access
           copy dist\pt-macro.exe .
           copy dist\pt-macro-gui.exe .
@@ -56,10 +56,10 @@ jobs:
       - name: Build executable (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Build CLI version
-          pyinstaller --onefile --console --name pt-macro --add-data "requirements.txt:." pt-macro.py
-          # Build GUI version (include pt-macro.py)
-          pyinstaller --onefile --console --name pt-macro-gui --add-data "requirements.txt:." --add-data "pt-macro.py:." pt-macro-gui.py
+          # Build CLI version using spec file
+          pyinstaller --clean pyinstaller.spec
+          # Build GUI version using spec file
+          pyinstaller --clean pyinstaller-gui.spec
           # Copy to root for easier access
           cp dist/pt-macro .
           cp dist/pt-macro-gui .
@@ -67,10 +67,10 @@ jobs:
       - name: Build executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          # Build CLI version
-          pyinstaller --onefile --console --name pt-macro --add-data "requirements.txt:." pt-macro.py
-          # Build GUI version (include pt-macro.py)
-          pyinstaller --onefile --console --name pt-macro-gui --add-data "requirements.txt:." --add-data "pt-macro.py:." pt-macro-gui.py
+          # Build CLI version using spec file
+          pyinstaller --clean pyinstaller.spec
+          # Build GUI version using spec file
+          pyinstaller --clean pyinstaller-gui.spec
           # Copy to root for easier access
           cp dist/pt-macro .
           cp dist/pt-macro-gui .
