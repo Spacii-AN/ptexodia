@@ -147,6 +147,10 @@ RAPID_CLICK_DELAY = 0.05  # Seconds: Delay between rapid clicks
 running = False
 macro_enabled = True
 warframe_active = False
+
+button_held = False
+button_held_lock = threading.RLock()  # Lock for button_held state
+
 rapid_clicking = False
 rapid_clicking_lock = threading.Lock()  # Add lock for thread safety
 
