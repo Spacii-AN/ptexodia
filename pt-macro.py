@@ -77,42 +77,52 @@ def get_side_mouse_button(button_number=1):
 ENABLE_MACRO_ALT = True  # Set to False to disable the second side mouse button
 
 # Initialize KEYBINDS - handle side mouse buttons safely
+# You can manually set 'macro' and 'macro_alt' to any button/key you want
+# Examples:
+#   'macro': Button.x1,        # Windows: first side button
+#   'macro': Button.button8,   # Linux/macOS: first side button
+#   'macro': Button.middle,    # Middle mouse button
+#   'macro': Key.f1,           # F1 key
+#   'macro': 'q',              # Q key
+# If set to None or not specified, will auto-detect based on platform
 KEYBINDS = {
     'melee': 'e',
     'jump': Key.space,
     'aim': Button.right,
     'fire': Button.left,
     'emote': '.',
-    'macro': None,  # Will be set below
-    'macro_alt': None,  # Will be set below if enabled
+    'macro': None,  # Auto-detect: Button.x1 (Windows) or Button.button8 (Linux/macOS)
+    'macro_alt': None,  # Auto-detect: Button.x2 (Windows) or Button.button9 (Linux/macOS) - only if ENABLE_MACRO_ALT = True
     'rapid_click': 'j',  # New keybind for rapid click macro
 }
 
-# Set side mouse buttons with error handling
-try:
-    KEYBINDS['macro'] = get_side_mouse_button(1)
-    if KEYBINDS['macro'] is None:
-        # Fallback: try direct access
+# Auto-detect side mouse buttons if not manually set
+# Windows uses Button.x1/x2, Linux/macOS use Button.button8/button9
+if KEYBINDS['macro'] is None:
+    try:
+        KEYBINDS['macro'] = get_side_mouse_button(1)
+        if KEYBINDS['macro'] is None:
+            # Fallback: try direct access
+            if hasattr(Button, 'x1'):
+                KEYBINDS['macro'] = Button.x1  # Windows
+            elif hasattr(Button, 'button8'):
+                KEYBINDS['macro'] = Button.button8  # Linux/macOS
+    except (AttributeError, TypeError):
+        # If button8/x1 doesn't exist, try the other
         if hasattr(Button, 'x1'):
             KEYBINDS['macro'] = Button.x1
         elif hasattr(Button, 'button8'):
             KEYBINDS['macro'] = Button.button8
-except (AttributeError, TypeError):
-    # If button8/x1 doesn't exist, try the other
-    if hasattr(Button, 'x1'):
-        KEYBINDS['macro'] = Button.x1
-    elif hasattr(Button, 'button8'):
-        KEYBINDS['macro'] = Button.button8
 
-if ENABLE_MACRO_ALT:
+if ENABLE_MACRO_ALT and KEYBINDS['macro_alt'] is None:
     try:
         KEYBINDS['macro_alt'] = get_side_mouse_button(2)
         if KEYBINDS['macro_alt'] is None:
             # Fallback: try direct access
             if hasattr(Button, 'x2'):
-                KEYBINDS['macro_alt'] = Button.x2
+                KEYBINDS['macro_alt'] = Button.x2  # Windows
             elif hasattr(Button, 'button9'):
-                KEYBINDS['macro_alt'] = Button.button9
+                KEYBINDS['macro_alt'] = Button.button9  # Linux/macOS
     except (AttributeError, TypeError):
         # If button9/x2 doesn't exist, try the other
         if hasattr(Button, 'x2'):

@@ -106,10 +106,10 @@ If you prefer to install manually:
 - `Melee with Fire Weapon Input` → **OFF**
 
 ### Keybinds
-Edit the `KEYBINDS` dictionary in `pt-macro.py` (lines 56-66) to customize controls:
+Edit the `KEYBINDS` dictionary in `pt-macro.py` (lines 79-89) to customize controls:
 
 ```python
-# Enable/disable alternative macro button (line 55)
+# Enable/disable alternative macro button (line 77)
 ENABLE_MACRO_ALT = True  # Set to False to disable second side mouse button
 
 KEYBINDS = {
@@ -118,36 +118,65 @@ KEYBINDS = {
     'aim': Button.right,             # Aim button (right mouse)
     'fire': Button.left,             # Fire button (left mouse)
     'emote': '.',                    # Emote key
-    'macro': get_side_mouse_button(1),  # Side mouse button (x1/button8) - cross-platform
-    'macro_alt': get_side_mouse_button(2),  # Alternative side button (x2/button9) - set ENABLE_MACRO_ALT = False to disable
+    'macro': None,                   # Auto-detects: Button.x1 (Windows) or Button.button8 (Linux/macOS)
+    'macro_alt': None,               # Auto-detects: Button.x2 (Windows) or Button.button9 (Linux/macOS)
     'rapid_click': 'j',              # Rapid click macro key
 }
 ```
 
+**Important Note on Side Mouse Buttons:**
+- **Windows**: Uses `Button.x1` and `Button.x2` for side mouse buttons
+- **Linux/macOS**: Uses `Button.button8` and `Button.button9` for side mouse buttons
+- The macro **automatically detects** the correct button for your platform
+- You can **manually override** by setting `'macro'` and `'macro_alt'` to any button/key you want (see examples below)
+
 #### Disabling Alternative Macro Button
-If you only want to use one side mouse button, set `ENABLE_MACRO_ALT = False` on line 55. This will disable the second side mouse button (x2/button9) from triggering the macro.
+If you only want to use one side mouse button, set `ENABLE_MACRO_ALT = False` on line 77. This will disable the second side mouse button (x2/button9) from triggering the macro.
 
-#### Common Button Alternatives for Macro Trigger
+#### Changing the Macro Button
 
-Here are some popular alternatives you can use for the `'macro'` keybind:
+You can easily change the macro button by editing the `'macro'` value in `KEYBINDS`. Here are examples:
 
-**Mouse Buttons (Recommended):**
-- `Button.button8` - First side mouse button (default, most common)
-- `Button.button9` - Second side mouse button
-- `Button.middle` - Middle mouse button (scroll wheel click)
+**Side Mouse Buttons (Platform-Specific):**
+```python
+# Windows
+'macro': Button.x1,        # First side button (x1)
+'macro': Button.x2,       # Second side button (x2)
+
+# Linux/macOS
+'macro': Button.button8,  # First side button (button8)
+'macro': Button.button9,  # Second side button (button9)
+```
+
+**Other Mouse Buttons:**
+```python
+'macro': Button.middle,   # Middle mouse button (scroll wheel click)
+'macro': Button.right,   # Right mouse button (not recommended - conflicts with aim)
+```
 
 **Keyboard Keys:**
-- `Key.f1` through `Key.f12` - Function keys (F1-F12)
-- `Key.ctrl` or `Key.ctrl_r` - Control keys
-- `Key.shift` or `Key.shift_r` - Shift keys
-- `'q'`, `'z'`, `'x'`, `'c'` - Letter keys (make sure they don't conflict with game controls)
-
-**Example:**
 ```python
-'macro': Button.middle,     # Use middle mouse button instead
-'macro': Key.f1,            # Use F1 key instead
-'macro': 'q',               # Use Q key instead
+'macro': Key.f1,         # Function keys (F1-F12)
+'macro': Key.f2,
+'macro': Key.ctrl,       # Control key
+'macro': Key.shift,      # Shift key
+'macro': 'q',            # Letter keys (make sure they don't conflict with game controls)
+'macro': 'z',
 ```
+
+**Examples:**
+```python
+# Use middle mouse button instead of side button
+'macro': Button.middle,
+
+# Use F1 key instead
+'macro': Key.f1,
+
+# Use Q key instead
+'macro': 'q',
+```
+
+> **Note**: If you set `'macro'` to `None`, it will auto-detect the correct side mouse button for your platform (Button.x1 on Windows, Button.button8 on Linux/macOS).
 
 > **Note**: For a complete list of all available buttons and keys, see [BUTTON_REFERENCE.md](BUTTON_REFERENCE.md)
 
@@ -335,7 +364,10 @@ PTmacro/
 - **Process Priority**: Attempts to set high priority for better performance
 - **Window Detection**: Platform-specific methods to detect active Warframe window
 - **Button State Tracking**: Real-time monitoring of button press/release states
-- **Cross-Platform Button Support**: Automatically detects and uses correct side mouse button names (button8/button9) on all platforms
+- **Cross-Platform Button Support**: Automatically detects and uses correct side mouse button names
+  - Windows: Uses `Button.x1` and `Button.x2` for side mouse buttons
+  - Linux/macOS: Uses `Button.button8` and `Button.button9` for side mouse buttons
+  - Fully configurable - you can override with any button or key you prefer
 - **Organized Configuration**: All keybinds and timing values are clearly organized in dedicated sections at the top of the file
 - **Graceful Shutdown**: Proper signal handling for clean exit with Ctrl+C
 
