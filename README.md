@@ -60,7 +60,7 @@ pip install pynput>=1.7.6 psutil>=5.9.0
 
 1. Clone or download this repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Spacii-AN/ptexodia
    cd PTmacro
    ```
 
