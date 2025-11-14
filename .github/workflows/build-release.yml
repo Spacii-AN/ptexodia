@@ -1,0 +1,149 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            exe-name: pt-macro.exe
+            artifact-name: windows
+          - os: macos-latest
+            exe-name: pt-macro
+            artifact-name: macos
+          - os: ubuntu-latest
+            exe-name: pt-macro
+            artifact-name: linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Build CLI version
+          pyinstaller --onefile --console --name pt-macro --add-data "requirements.txt;." pt-macro.py
+          # Build GUI version (include pt-macro.py)
+          pyinstaller --onefile --windowed --name pt-macro-gui --add-data "requirements.txt;." --add-data "pt-macro.py;." pt-macro-gui.py
+          # Copy to root for easier access
+          copy dist\pt-macro.exe .
+          copy dist\pt-macro-gui.exe .
+
+      - name: Build executable (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Build CLI version
+          pyinstaller --onefile --console --name pt-macro --add-data "requirements.txt:." pt-macro.py
+          # Build GUI version (include pt-macro.py)
+          pyinstaller --onefile --console --name pt-macro-gui --add-data "requirements.txt:." --add-data "pt-macro.py:." pt-macro-gui.py
+          # Copy to root for easier access
+          cp dist/pt-macro .
+          cp dist/pt-macro-gui .
+
+      - name: Build executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          # Build CLI version
+          pyinstaller --onefile --console --name pt-macro --add-data "requirements.txt:." pt-macro.py
+          # Build GUI version (include pt-macro.py)
+          pyinstaller --onefile --console --name pt-macro-gui --add-data "requirements.txt:." --add-data "pt-macro.py:." pt-macro-gui.py
+          # Copy to root for easier access
+          cp dist/pt-macro .
+          cp dist/pt-macro-gui .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}-executable
+          path: |
+            ${{ matrix.exe-name }}
+            pt-macro-gui*
+            requirements.txt
+            README.md
+            BUTTON_REFERENCE.md
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/windows-executable/pt-macro.exe
+            artifacts/windows-executable/pt-macro-gui.exe
+            artifacts/macos-executable/pt-macro
+            artifacts/macos-executable/pt-macro-gui
+            artifacts/linux-executable/pt-macro
+            artifacts/linux-executable/pt-macro-gui
+            artifacts/windows-executable/README.md
+            artifacts/windows-executable/BUTTON_REFERENCE.md
+          body: |
+            ## Executables for all platforms
+            
+            ### Windows
+            - **CLI Version**: Download `pt-macro.exe` (console/terminal version)
+            - **GUI Version**: Download `pt-macro-gui.exe` (graphical interface with system tray)
+            - No Python installation required!
+            
+            ### macOS
+            - **CLI Version**: Download `pt-macro` (macOS)
+            - **GUI Version**: Download `pt-macro-gui` (macOS)
+            - Make executable: `chmod +x pt-macro` or `chmod +x pt-macro-gui`
+            - Run: `./pt-macro` or `./pt-macro-gui`
+            
+            ### Linux
+            - **CLI Version**: Download `pt-macro` (Linux)
+            - **GUI Version**: Download `pt-macro-gui` (Linux)
+            - Make executable: `chmod +x pt-macro` or `chmod +x pt-macro-gui`
+            - Run: `./pt-macro` or `./pt-macro-gui`
+            
+            ## Installation
+            1. Download the executable for your platform (CLI or GUI version)
+            2. Run it - no Python or dependencies needed!
+            3. The executable is completely standalone
+            
+            ## Version Differences
+            - **CLI Version** (`pt-macro`): Terminal/console version - edit config in code
+            - **GUI Version** (`pt-macro-gui`): Graphical interface - configure via GUI, minimize to tray
+            
+            ## Notes
+            - First run may take a moment to initialize
+            - On macOS/Linux, you may need to allow execution permissions
+            - Windows may show a security warning on first run (this is normal for unsigned executables)
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

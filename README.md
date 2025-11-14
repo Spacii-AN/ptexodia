@@ -58,7 +58,22 @@ pip install pynput>=1.7.6 psutil>=5.9.0
 
 ## Installation
 
-### Easy Installation (Recommended)
+### Pre-built Executables (Easiest - No Python Required!)
+
+**Download from [Releases](https://github.com/Spacii-AN/ptexodia/releases):**
+
+**Two versions available:**
+- **CLI Version** (`pt-macro`): Terminal/console version - edit config in code (same as running the Python script)
+- **GUI Version** (`pt-macro-gui`): Graphical interface - configure via GUI, minimize to system tray
+
+**Platforms:**
+- **Windows**: Download `pt-macro.exe` (CLI) or `pt-macro-gui.exe` (GUI) and double-click to run
+- **macOS**: Download `pt-macro` or `pt-macro-gui`, make executable: `chmod +x pt-macro-gui`, then run: `./pt-macro-gui`
+- **Linux**: Download `pt-macro` or `pt-macro-gui`, make executable: `chmod +x pt-macro-gui`, then run: `./pt-macro-gui`
+
+> **Note**: Executables are built automatically on each release. No Python installation needed!
+
+### Easy Installation (Python Required)
 
 **For Windows:**
 1. Download or clone this repository

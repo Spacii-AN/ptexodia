@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+*.spec~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Executables (keep source, ignore built)
+*.exe
+pt-macro
+pt-macro.exe
+
+# Logs
+*.log
+
+# GitHub Actions artifacts (local)
+artifacts/
+
