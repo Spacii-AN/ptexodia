@@ -175,6 +175,13 @@ LOOP_DELAY = 0.0005  # Seconds: Delay between sequence loops (lower = faster rep
 RAPID_CLICK_COUNT = 10  # Number: Number of clicks for rapid click macro
 RAPID_CLICK_DELAY = 0.05  # Seconds: Delay between rapid clicks
 
+# ============================================================================
+# END OF USER CONFIGURATION
+# ============================================================================
+# Everything below this line is code logic - do not modify unless you know
+# what you're doing. All user-configurable settings are above this line.
+# ============================================================================
+
 # Global state
 running = False
 macro_enabled = True
