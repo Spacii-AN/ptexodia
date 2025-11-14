@@ -40,13 +40,33 @@ else:
 def get_side_mouse_button(button_number=1):
     """
     Get the side mouse button in a cross-platform way.
-    pynput uses button8/button9 for side mouse buttons on all platforms.
+    Windows uses Button.x1/x2, Linux/macOS use Button.button8/button9.
     button_number: 1 for first side button (x1/button8), 2 for second side button (x2/button9)
     """
-    if button_number == 1:
-        return Button.button8  # First side mouse button (x1)
-    else:  # button_number == 2
-        return Button.button9  # Second side mouse button (x2)
+    try:
+        if button_number == 1:
+            # Try x1 first (Windows)
+            if hasattr(Button, 'x1'):
+                return Button.x1
+            # Fallback to button8 (Linux/macOS)
+            elif hasattr(Button, 'button8'):
+                return Button.button8
+            else:
+                # Last resort: try to get it anyway
+                return getattr(Button, 'x1', getattr(Button, 'button8', None))
+        else:  # button_number == 2
+            # Try x2 first (Windows)
+            if hasattr(Button, 'x2'):
+                return Button.x2
+            # Fallback to button9 (Linux/macOS)
+            elif hasattr(Button, 'button9'):
+                return Button.button9
+            else:
+                # Last resort: try to get it anyway
+                return getattr(Button, 'x2', getattr(Button, 'button9', None))
+    except (AttributeError, TypeError):
+        # If all else fails, return None and let the user configure manually
+        return None
 
 
 # ============================================================================
@@ -56,16 +76,49 @@ def get_side_mouse_button(button_number=1):
 # Enable/disable alternative macro button (second side mouse button)
 ENABLE_MACRO_ALT = True  # Set to False to disable the second side mouse button
 
+# Initialize KEYBINDS - handle side mouse buttons safely
 KEYBINDS = {
     'melee': 'e',
     'jump': Key.space,
     'aim': Button.right,
     'fire': Button.left,
     'emote': '.',
-    'macro': get_side_mouse_button(1),  # First side mouse button (x1/button8) - cross-platform
-    'macro_alt': get_side_mouse_button(2) if ENABLE_MACRO_ALT else None,  # Second side mouse button (x2/button9) - set ENABLE_MACRO_ALT = False to disable
+    'macro': None,  # Will be set below
+    'macro_alt': None,  # Will be set below if enabled
     'rapid_click': 'j',  # New keybind for rapid click macro
 }
+
+# Set side mouse buttons with error handling
+try:
+    KEYBINDS['macro'] = get_side_mouse_button(1)
+    if KEYBINDS['macro'] is None:
+        # Fallback: try direct access
+        if hasattr(Button, 'x1'):
+            KEYBINDS['macro'] = Button.x1
+        elif hasattr(Button, 'button8'):
+            KEYBINDS['macro'] = Button.button8
+except (AttributeError, TypeError):
+    # If button8/x1 doesn't exist, try the other
+    if hasattr(Button, 'x1'):
+        KEYBINDS['macro'] = Button.x1
+    elif hasattr(Button, 'button8'):
+        KEYBINDS['macro'] = Button.button8
+
+if ENABLE_MACRO_ALT:
+    try:
+        KEYBINDS['macro_alt'] = get_side_mouse_button(2)
+        if KEYBINDS['macro_alt'] is None:
+            # Fallback: try direct access
+            if hasattr(Button, 'x2'):
+                KEYBINDS['macro_alt'] = Button.x2
+            elif hasattr(Button, 'button9'):
+                KEYBINDS['macro_alt'] = Button.button9
+    except (AttributeError, TypeError):
+        # If button9/x2 doesn't exist, try the other
+        if hasattr(Button, 'x2'):
+            KEYBINDS['macro_alt'] = Button.x2
+        elif hasattr(Button, 'button9'):
+            KEYBINDS['macro_alt'] = Button.button9
 
 # ============================================================================
 # TIMING CONFIGURATION - Adjust these values to fine-tune the macro
