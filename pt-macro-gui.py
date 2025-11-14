@@ -118,11 +118,42 @@ class MacroGUI:
         self.config = MacroConfig()
         self.macro_module = pt_macro
         
+        # Modern color scheme
+        self.colors = {
+            'bg': '#2b2b2b',  # Dark background
+            'fg': '#ffffff',  # White text
+            'accent': '#4a9eff',  # Blue accent
+            'accent_hover': '#5fb3ff',
+            'success': '#4caf50',  # Green
+            'danger': '#f44336',  # Red
+            'frame_bg': '#3c3c3c',  # Slightly lighter frame
+            'entry_bg': '#404040',  # Entry background
+            'text_bg': '#1e1e1e',  # Text widget background
+            'border': '#555555'
+        }
+        
         # Create GUI
         self.root = tk.Tk()
         self.root.title("Exodia Contagion Macro - Warframe")
-        self.root.geometry("900x750")
+        self.root.geometry("1000x700")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # Center window on screen
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+        
+        # Set root background
+        self.root.configure(bg=self.colors['bg'])
+        
+        # Prevent window resizing
+        self.root.resizable(False, False)
+        
+        # Apply modern styling
+        self.setup_styles()
         
         # System tray
         self.tray_icon = None
@@ -133,6 +164,14 @@ class MacroGUI:
         self.mouse_listener = None
         self.background_thread = None
         
+        # Key capture state
+        self.capturing_key = None
+        self.capture_listener = None
+        self.capture_mouse_listener = None
+        
+        # Initialize status_var before setup_gui
+        self.status_var = tk.StringVar(value="Ready - Configure settings and click 'Start Macro'")
+        
         # Setup GUI
         self.setup_gui()
         self.load_config_to_gui()
@@ -141,59 +180,204 @@ class MacroGUI:
         # Start background check
         self.macro_module.start_background_check()
     
+    def setup_styles(self):
+        """Setup modern ttk styles"""
+        style = ttk.Style()
+        
+        # Try to use a modern theme
+        available_themes = style.theme_names()
+        if 'clam' in available_themes:
+            style.theme_use('clam')
+        elif 'alt' in available_themes:
+            style.theme_use('alt')
+        
+        # Configure button styles
+        style.configure('Accent.TButton',
+                       background=self.colors['accent'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=10)
+        style.map('Accent.TButton',
+                 background=[('active', self.colors['accent_hover']),
+                            ('pressed', self.colors['accent'])])
+        
+        style.configure('Success.TButton',
+                       background=self.colors['success'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=10)
+        style.map('Success.TButton',
+                 background=[('active', '#66bb6a'),
+                            ('pressed', '#43a047')])
+        
+        style.configure('Danger.TButton',
+                       background=self.colors['danger'],
+                       foreground='white',
+                       borderwidth=0,
+                       focuscolor='none',
+                       padding=10)
+        style.map('Danger.TButton',
+                 background=[('active', '#ef5350'),
+                            ('pressed', '#e53935')])
+        
+        # Configure notebook style
+        style.configure('TNotebook',
+                       background=self.colors['bg'],
+                       borderwidth=0)
+        style.configure('TNotebook.Tab',
+                       background=self.colors['frame_bg'],
+                       foreground=self.colors['fg'],
+                       padding=[20, 10],
+                       borderwidth=0)
+        style.map('TNotebook.Tab',
+                 background=[('selected', self.colors['accent']),
+                            ('active', self.colors['frame_bg'])],
+                 foreground=[('selected', 'white'),
+                            ('active', self.colors['fg'])])
+        
+        # Configure frame styles
+        style.configure('Card.TLabelframe',
+                       background=self.colors['bg'],
+                       foreground=self.colors['fg'],
+                       borderwidth=1,
+                       relief='flat')
+        style.configure('Card.TLabelframe.Label',
+                       background=self.colors['bg'],
+                       foreground=self.colors['accent'],
+                       font=('Segoe UI', 10, 'bold'))
+        
+        # Configure label styles
+        style.configure('Heading.TLabel',
+                       background=self.colors['bg'],
+                       foreground=self.colors['accent'],
+                       font=('Segoe UI', 16, 'bold'))
+        style.configure('Subheading.TLabel',
+                       background=self.colors['bg'],
+                       foreground=self.colors['fg'],
+                       font=('Segoe UI', 11))
+    
     def setup_gui(self):
         """Setup the GUI interface"""
+        # Header
+        header_frame = tk.Frame(self.root, bg=self.colors['accent'], height=80)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        title_label = tk.Label(header_frame,
+                               text="Exodia Contagion Macro",
+                               font=('Segoe UI', 20, 'bold'),
+                               bg=self.colors['accent'],
+                               fg='white')
+        title_label.pack(pady=15)
+        
+        subtitle_label = tk.Label(header_frame,
+                                 text="Warframe Automation Tool",
+                                 font=('Segoe UI', 10),
+                                 bg=self.colors['accent'],
+                                 fg='white')
+        subtitle_label.pack()
+        
+        # Main container with padding
+        main_container = tk.Frame(self.root, bg=self.colors['bg'])
+        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
         # Create notebook for tabs
-        notebook = ttk.Notebook(self.root)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        notebook = ttk.Notebook(main_container)
+        notebook.pack(fill=tk.BOTH, expand=True)
         
         # Tab 1: Controls
-        controls_frame = ttk.Frame(notebook)
-        notebook.add(controls_frame, text="Controls")
+        controls_frame = tk.Frame(notebook, bg=self.colors['bg'])
+        notebook.add(controls_frame, text="  Controls  ")
         self.setup_controls_tab(controls_frame)
         
         # Tab 2: Keybinds
-        keybinds_frame = ttk.Frame(notebook)
-        notebook.add(keybinds_frame, text="Keybinds")
+        keybinds_frame = tk.Frame(notebook, bg=self.colors['bg'])
+        notebook.add(keybinds_frame, text="  Keybinds  ")
         self.setup_keybinds_tab(keybinds_frame)
         
         # Tab 3: Timing
-        timing_frame = ttk.Frame(notebook)
-        notebook.add(timing_frame, text="Timing")
+        timing_frame = tk.Frame(notebook, bg=self.colors['bg'])
+        notebook.add(timing_frame, text="  Timing  ")
         self.setup_timing_tab(timing_frame)
         
         # Tab 4: Settings
-        settings_frame = ttk.Frame(notebook)
-        notebook.add(settings_frame, text="Settings")
+        settings_frame = tk.Frame(notebook, bg=self.colors['bg'])
+        notebook.add(settings_frame, text="  Settings  ")
         self.setup_settings_tab(settings_frame)
         
         # Status bar
-        self.status_var = tk.StringVar(value="Ready - Configure settings and click 'Start Macro'")
-        status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN)
+        status_bar = tk.Label(self.root,
+                             textvariable=self.status_var,
+                             bg=self.colors['frame_bg'],
+                             fg=self.colors['fg'],
+                             font=('Segoe UI', 9),
+                             anchor='w',
+                             padx=10,
+                             pady=5)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
     
     def setup_controls_tab(self, parent):
         """Setup controls tab"""
-        # Control buttons
-        btn_frame = ttk.Frame(parent)
-        btn_frame.pack(pady=20)
+        # Control buttons with modern styling
+        btn_container = tk.Frame(parent, bg=self.colors['bg'])
+        btn_container.pack(pady=30)
         
-        self.start_btn = ttk.Button(btn_frame, text="Start Macro", command=self.start_macro, width=20)
-        self.start_btn.pack(side=tk.LEFT, padx=5)
+        btn_frame = tk.Frame(btn_container, bg=self.colors['bg'])
+        btn_frame.pack()
         
-        self.stop_btn = ttk.Button(btn_frame, text="Stop Macro", command=self.stop_macro, width=20, state=tk.DISABLED)
-        self.stop_btn.pack(side=tk.LEFT, padx=5)
+        self.start_btn = ttk.Button(btn_frame, text="Start Macro", 
+                                   command=self.start_macro, 
+                                   style='Success.TButton',
+                                   width=18)
+        self.start_btn.pack(side=tk.LEFT, padx=8, pady=5)
         
-        ttk.Button(btn_frame, text="Save Config", command=self.save_config, width=20).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Load Config", command=self.load_config, width=20).pack(side=tk.LEFT, padx=5)
+        self.stop_btn = ttk.Button(btn_frame, text="Stop Macro", 
+                                   command=self.stop_macro, 
+                                   style='Danger.TButton',
+                                   width=18,
+                                   state=tk.DISABLED)
+        self.stop_btn.pack(side=tk.LEFT, padx=8, pady=5)
         
-        # Status display
-        status_frame = ttk.LabelFrame(parent, text="Status Log", padding=10)
-        status_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        save_btn = ttk.Button(btn_frame, text="Save Config", 
+                             command=self.save_config, 
+                             style='Accent.TButton',
+                             width=18)
+        save_btn.pack(side=tk.LEFT, padx=8, pady=5)
         
-        self.status_text = tk.Text(status_frame, height=20, wrap=tk.WORD, font=("Consolas", 9))
-        self.status_text.pack(fill=tk.BOTH, expand=True)
-        scrollbar = ttk.Scrollbar(status_frame, orient=tk.VERTICAL, command=self.status_text.yview)
+        load_btn = ttk.Button(btn_frame, text="Load Config", 
+                             command=self.load_config, 
+                             style='Accent.TButton',
+                             width=18)
+        load_btn.pack(side=tk.LEFT, padx=8, pady=5)
+        
+        # Status display with modern card style
+        status_frame = ttk.LabelFrame(parent, text="Status Log", 
+                                     style='Card.TLabelframe',
+                                     padding=15)
+        status_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+        
+        # Text widget with modern styling
+        text_container = tk.Frame(status_frame, bg=self.colors['text_bg'])
+        text_container.pack(fill=tk.BOTH, expand=True)
+        
+        self.status_text = tk.Text(text_container, 
+                                   height=20, 
+                                   wrap=tk.WORD, 
+                                   font=("Consolas", 10),
+                                   bg=self.colors['text_bg'],
+                                   fg='#d4d4d4',
+                                   insertbackground=self.colors['accent'],
+                                   selectbackground=self.colors['accent'],
+                                   selectforeground='white',
+                                   borderwidth=0,
+                                   relief='flat',
+                                   padx=10,
+                                   pady=10)
+        self.status_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        scrollbar = ttk.Scrollbar(text_container, orient=tk.VERTICAL, command=self.status_text.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.status_text.config(yscrollcommand=scrollbar.set)
         
@@ -204,8 +388,21 @@ class MacroGUI:
     
     def setup_keybinds_tab(self, parent):
         """Setup keybinds configuration tab"""
-        frame = ttk.Frame(parent)
-        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Scrollable frame
+        canvas = tk.Canvas(parent, bg=self.colors['bg'], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors['bg'])
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        frame = tk.Frame(scrollable_frame, bg=self.colors['bg'])
+        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # Keybind entries with descriptions
         keybinds = [
@@ -220,28 +417,105 @@ class MacroGUI:
         ]
         
         self.keybind_vars = {}
+        self.set_button_widgets = {}
         for label, key, desc in keybinds:
-            row = ttk.Frame(frame)
-            row.pack(fill=tk.X, pady=3)
-            ttk.Label(row, text=f"{label}:", width=20).pack(side=tk.LEFT)
+            card = tk.Frame(frame, bg=self.colors['frame_bg'], relief='flat', bd=1)
+            card.pack(fill=tk.X, pady=5, padx=5)
+            
+            row = tk.Frame(card, bg=self.colors['frame_bg'])
+            row.pack(fill=tk.X, padx=15, pady=10)
+            
+            label_widget = tk.Label(row, text=f"{label}:", 
+                                   bg=self.colors['frame_bg'],
+                                   fg=self.colors['fg'],
+                                   font=('Segoe UI', 10, 'bold'),
+                                   width=18,
+                                   anchor='w')
+            label_widget.pack(side=tk.LEFT)
+            
             var = tk.StringVar()
-            entry = ttk.Entry(row, textvariable=var, width=20)
-            entry.pack(side=tk.LEFT, padx=5)
+            entry = tk.Entry(row, textvariable=var, 
+                           width=20,
+                           bg=self.colors['entry_bg'],
+                           fg=self.colors['fg'],
+                           font=('Segoe UI', 10),
+                           insertbackground=self.colors['accent'],
+                           relief='flat',
+                           bd=5)
+            entry.pack(side=tk.LEFT, padx=10)
             self.keybind_vars[key] = var
-            ttk.Label(row, text=desc, foreground="gray", font=("TkDefaultFont", 8)).pack(side=tk.LEFT, padx=5)
+            
+            # Set Button
+            set_btn = ttk.Button(row, text="Set Button", 
+                               command=lambda k=key: self.start_capture_key(k),
+                               style='Accent.TButton',
+                               width=12)
+            set_btn.pack(side=tk.LEFT, padx=5)
+            self.set_button_widgets[key] = set_btn
+            
+            desc_label = tk.Label(row, text=desc, 
+                                 bg=self.colors['frame_bg'],
+                                 fg='#888888',
+                                 font=('Segoe UI', 9))
+            desc_label.pack(side=tk.LEFT, padx=5)
         
         # Enable macro alt checkbox
-        self.enable_alt_var = tk.BooleanVar()
-        ttk.Checkbutton(frame, text="Enable Alternative Macro Button", variable=self.enable_alt_var).pack(pady=10)
+        checkbox_frame = tk.Frame(frame, bg=self.colors['bg'])
+        checkbox_frame.pack(pady=15)
         
-        ttk.Label(frame, text="Note: For button names, see BUTTON_REFERENCE.md", foreground="blue", font=("TkDefaultFont", 8)).pack(pady=5)
+        self.enable_alt_var = tk.BooleanVar()
+        checkbox = tk.Checkbutton(checkbox_frame, 
+                                 text="Enable Alternative Macro Button",
+                                 variable=self.enable_alt_var,
+                                 bg=self.colors['bg'],
+                                 fg=self.colors['fg'],
+                                 selectcolor=self.colors['frame_bg'],
+                                 activebackground=self.colors['bg'],
+                                 activeforeground=self.colors['fg'],
+                                 font=('Segoe UI', 10))
+        checkbox.pack()
+        
+        # Button reference section
+        ref_frame = ttk.LabelFrame(frame, text="Button Reference", 
+                                   style='Card.TLabelframe',
+                                   padding=15)
+        ref_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        ref_text = """Mouse Buttons:
+• Button.left / 'left' - Left mouse button
+• Button.right / 'right' - Right mouse button
+• Button.middle / 'middle' - Middle mouse button
+• Button.button8 / 'button8' - First side button (x1) - Recommended
+• Button.button9 / 'button9' - Second side button (x2)
+
+Keyboard Keys:
+• Key.space / 'space' - Spacebar
+• Key.enter / 'enter' - Enter
+• Key.f1 to Key.f12 / 'f1' to 'f12' - Function keys
+• Regular letters: 'a', 'b', 'c', etc.
+• Regular numbers: '1', '2', '3', etc.
+• Special chars: '.', ',', ';', etc.
+
+Click 'Set Button' next to any keybind, then press the key/button you want to assign."""
+        
+        ref_label = tk.Label(ref_frame, 
+                           text=ref_text,
+                           bg=self.colors['bg'],
+                           fg=self.colors['fg'],
+                           font=('Consolas', 9),
+                           justify=tk.LEFT,
+                           anchor='nw')
+        ref_label.pack(fill=tk.BOTH, expand=True, anchor=tk.W)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
     
     def setup_timing_tab(self, parent):
         """Setup timing configuration tab"""
         # Create scrollable frame
-        canvas = tk.Canvas(parent)
+        canvas = tk.Canvas(parent, bg=self.colors['bg'], highlightthickness=0)
         scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors['bg'])
         
         scrollable_frame.bind(
             "<Configure>",
@@ -252,7 +526,7 @@ class MacroGUI:
         canvas.configure(yscrollcommand=scrollbar.set)
         
         frame = scrollable_frame
-        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -272,8 +546,20 @@ class MacroGUI:
         
         # Emote
         self.create_timing_entry(frame, "Emote Delay Manual (s)", "emote_preparation_delay_manual", 0.100, "Manual emote delay")
+        
+        checkbox_frame = tk.Frame(frame, bg=self.colors['bg'])
+        checkbox_frame.pack(pady=10)
         self.use_emote_formula_var = tk.BooleanVar()
-        ttk.Checkbutton(frame, text="Use Emote Formula (auto-calculated)", variable=self.use_emote_formula_var).pack(pady=5)
+        checkbox = tk.Checkbutton(checkbox_frame, 
+                                 text="Use Emote Formula (auto-calculated)",
+                                 variable=self.use_emote_formula_var,
+                                 bg=self.colors['bg'],
+                                 fg=self.colors['fg'],
+                                 selectcolor=self.colors['frame_bg'],
+                                 activebackground=self.colors['bg'],
+                                 activeforeground=self.colors['fg'],
+                                 font=('Segoe UI', 10))
+        checkbox.pack()
         
         # Rapid Fire
         self.create_timing_entry(frame, "Rapid Fire Duration (ms)", "rapid_fire_duration_ms", 230, "Total rapid fire duration")
@@ -289,38 +575,136 @@ class MacroGUI:
     
     def create_timing_entry(self, parent, label, key, default, tooltip=""):
         """Create a timing entry widget"""
-        row = ttk.Frame(parent)
-        row.pack(fill=tk.X, pady=2)
-        ttk.Label(row, text=f"{label}:", width=30).pack(side=tk.LEFT)
+        card = tk.Frame(parent, bg=self.colors['frame_bg'], relief='flat', bd=1)
+        card.pack(fill=tk.X, pady=4, padx=5)
+        
+        row = tk.Frame(card, bg=self.colors['frame_bg'])
+        row.pack(fill=tk.X, padx=15, pady=10)
+        
+        label_widget = tk.Label(row, text=f"{label}:", 
+                               bg=self.colors['frame_bg'],
+                               fg=self.colors['fg'],
+                               font=('Segoe UI', 10, 'bold'),
+                               width=28,
+                               anchor='w')
+        label_widget.pack(side=tk.LEFT)
+        
         var = tk.StringVar(value=str(default))
-        entry = ttk.Entry(row, textvariable=var, width=15)
-        entry.pack(side=tk.LEFT, padx=5)
-        if tooltip:
-            ttk.Label(row, text=tooltip, foreground="gray", font=("TkDefaultFont", 8)).pack(side=tk.LEFT)
+        entry = tk.Entry(row, textvariable=var, 
+                       width=18,
+                       bg=self.colors['entry_bg'],
+                       fg=self.colors['fg'],
+                       font=('Segoe UI', 10),
+                       insertbackground=self.colors['accent'],
+                       relief='flat',
+                       bd=5)
+        entry.pack(side=tk.LEFT, padx=10)
         self.timing_vars[key] = var
+        
+        if tooltip:
+            tooltip_label = tk.Label(row, text=tooltip, 
+                                   bg=self.colors['frame_bg'],
+                                   fg='#888888',
+                                   font=('Segoe UI', 9))
+            tooltip_label.pack(side=tk.LEFT, padx=5)
     
     def setup_settings_tab(self, parent):
         """Setup settings tab"""
-        frame = ttk.Frame(parent)
-        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Scrollable frame
+        canvas = tk.Canvas(parent, bg=self.colors['bg'], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors['bg'])
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        frame = scrollable_frame
+        frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # System tray
-        tray_frame = ttk.LabelFrame(frame, text="System Tray", padding=10)
-        tray_frame.pack(fill=tk.X, pady=5)
+        tray_frame = ttk.LabelFrame(frame, text="System Tray", 
+                                   style='Card.TLabelframe',
+                                   padding=15)
+        tray_frame.pack(fill=tk.X, pady=10)
         
         self.minimize_to_tray_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(tray_frame, text="Minimize to System Tray", variable=self.minimize_to_tray_var).pack(anchor=tk.W)
+        checkbox = tk.Checkbutton(tray_frame, 
+                                 text="Minimize to System Tray",
+                                 variable=self.minimize_to_tray_var,
+                                 bg=self.colors['bg'],
+                                 fg=self.colors['fg'],
+                                 selectcolor=self.colors['frame_bg'],
+                                 activebackground=self.colors['bg'],
+                                 activeforeground=self.colors['fg'],
+                                 font=('Segoe UI', 10))
+        checkbox.pack(anchor=tk.W)
         
         if not TRAY_AVAILABLE:
-            ttk.Label(tray_frame, text="System tray requires: pip install pystray pillow", foreground="red").pack(anchor=tk.W)
+            warning_label = tk.Label(tray_frame, 
+                                   text="⚠ System tray requires: pip install pystray pillow",
+                                   bg=self.colors['bg'],
+                                   fg='#ff9800',
+                                   font=('Segoe UI', 9))
+            warning_label.pack(anchor=tk.W, pady=(5, 0))
             self.minimize_to_tray_var.set(False)
         
-        # Info
-        info_frame = ttk.LabelFrame(frame, text="Information", padding=10)
-        info_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        # Log file location
+        log_frame = ttk.LabelFrame(frame, text="Log File", 
+                                  style='Card.TLabelframe',
+                                  padding=15)
+        log_frame.pack(fill=tk.X, pady=10)
         
-        info_text = """
-This GUI allows you to configure the macro without editing code.
+        log_row = tk.Frame(log_frame, bg=self.colors['bg'])
+        log_row.pack(fill=tk.X)
+        
+        label = tk.Label(log_row, text="EE.log Location:", 
+                        bg=self.colors['bg'],
+                        fg=self.colors['fg'],
+                        font=('Segoe UI', 10),
+                        width=15,
+                        anchor='w')
+        label.pack(side=tk.LEFT, padx=5)
+        
+        self.log_file_var = tk.StringVar(value="")
+        log_entry = tk.Entry(log_row, textvariable=self.log_file_var, 
+                           width=40,
+                           bg=self.colors['entry_bg'],
+                           fg=self.colors['fg'],
+                           font=('Segoe UI', 10),
+                           insertbackground=self.colors['accent'],
+                           relief='flat',
+                           bd=5)
+        log_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        
+        def browse_log_file():
+            filename = filedialog.askopenfilename(
+                title="Select EE.log file",
+                filetypes=[("Log files", "*.log"), ("All files", "*.*")]
+            )
+            if filename:
+                self.log_file_var.set(filename)
+        
+        browse_btn = ttk.Button(log_row, text="Browse...", 
+                               command=browse_log_file,
+                               style='Accent.TButton',
+                               width=12)
+        browse_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Info
+        info_frame = ttk.LabelFrame(frame, text="Information", 
+                                   style='Card.TLabelframe',
+                                   padding=15)
+        info_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        info_text = """This GUI allows you to configure the macro without editing code.
 
 1. Configure your keybinds and timing in the tabs
 2. Click 'Save Config' to save your settings
@@ -328,9 +712,16 @@ This GUI allows you to configure the macro without editing code.
 4. Hold your side mouse button to activate the macro
 5. Press F11 to toggle macros on/off
 
-The macro will only run when Warframe is the active window.
-        """
-        ttk.Label(info_frame, text=info_text.strip(), justify=tk.LEFT).pack(anchor=tk.W)
+The macro will only run when Warframe is the active window."""
+        
+        info_label = tk.Label(info_frame, 
+                             text=info_text,
+                             bg=self.colors['bg'],
+                             fg=self.colors['fg'],
+                             font=('Segoe UI', 10),
+                             justify=tk.LEFT,
+                             anchor='nw')
+        info_label.pack(fill=tk.BOTH, expand=True, anchor=tk.W)
     
     def log(self, message):
         """Add message to log"""
@@ -353,6 +744,10 @@ The macro will only run when Warframe is the active window.
         # Load settings
         self.enable_alt_var.set(self.config.config.get("settings", {}).get("enable_macro_alt", True))
         self.use_emote_formula_var.set(self.config.config.get("timing", {}).get("use_emote_formula", True))
+        
+        # Load log file location
+        if hasattr(self, 'log_file_var'):
+            self.log_file_var.set(self.config.config.get("settings", {}).get("log_file", ""))
     
     def apply_config_to_macro(self):
         """Apply GUI configuration to pt-macro.py module"""
@@ -446,12 +841,14 @@ The macro will only run when Warframe is the active window.
         self.config.config.setdefault("settings", {})["enable_macro_alt"] = self.enable_alt_var.get()
         self.config.config.setdefault("timing", {})["use_emote_formula"] = self.use_emote_formula_var.get()
         
+        # Save log file location
+        if hasattr(self, 'log_file_var'):
+            self.config.config.setdefault("settings", {})["log_file"] = self.log_file_var.get()
+        
         if self.config.save_config():
             self.log("Configuration saved successfully!")
-            messagebox.showinfo("Success", "Configuration saved!")
         else:
             self.log("Error saving configuration")
-            messagebox.showerror("Error", "Failed to save configuration")
     
     def load_config(self):
         """Load configuration from file"""
@@ -459,7 +856,6 @@ The macro will only run when Warframe is the active window.
         self.load_config_to_gui()
         self.apply_config_to_macro()
         self.log("Configuration loaded!")
-        messagebox.showinfo("Success", "Configuration loaded!")
     
     def start_macro(self):
         """Start the macro"""
@@ -508,8 +904,124 @@ The macro will only run when Warframe is the active window.
         self.log("Macro stopped!")
         self.status_var.set("Macro Stopped")
     
+    def start_capture_key(self, keybind_name):
+        """Start capturing a key/button press"""
+        if self.capturing_key:
+            self.stop_capture_key()
+        
+        self.capturing_key = keybind_name
+        self.set_button_widgets[keybind_name].config(text="Press key/button...", state=tk.DISABLED)
+        self.log(f"Capturing key for '{keybind_name}'... Press any key or mouse button")
+        self.status_var.set(f"Capturing key for '{keybind_name}'... Press any key or button")
+        
+        from pynput import keyboard
+        from pynput.mouse import Listener as MouseListener
+        
+        def on_key_press(key):
+            if not self.capturing_key:
+                return False
+            
+            try:
+                # Handle special keys
+                if hasattr(key, 'name'):
+                    key_str = key.name
+                    # Map common special keys
+                    if key_str == 'space':
+                        value = 'space'
+                    elif key_str.startswith('f') and len(key_str) > 1:
+                        value = key_str  # f1, f2, etc.
+                    elif key_str in ['enter', 'tab', 'backspace', 'delete', 'esc', 'shift', 'ctrl', 'alt', 'cmd']:
+                        value = key_str
+                    else:
+                        value = key_str
+                else:
+                    # Regular character key - remove quotes
+                    key_repr = str(key)
+                    if key_repr.startswith("'") and key_repr.endswith("'"):
+                        value = key_repr[1:-1]  # Remove quotes
+                    elif key_repr.startswith('Key.'):
+                        value = key_repr.replace('Key.', '')
+                    else:
+                        value = key_repr.replace("'", "")
+                
+                self.set_keybind_value(keybind_name, value, 'keyboard')
+                return False  # Stop listener
+            except Exception as e:
+                self.log(f"Error capturing key: {e}")
+                return False
+        
+        def on_mouse_click(x, y, button, pressed):
+            if not self.capturing_key or not pressed:
+                return
+            
+            try:
+                button_name = str(button).replace('Button.', '')
+                self.set_keybind_value(keybind_name, button_name, 'mouse')
+                return False  # Stop listener
+            except Exception as e:
+                self.log(f"Error capturing mouse button: {e}")
+                return False
+        
+        self.capture_listener = keyboard.Listener(on_press=on_key_press)
+        self.capture_mouse_listener = MouseListener(on_click=on_mouse_click)
+        
+        self.capture_listener.start()
+        self.capture_mouse_listener.start()
+    
+    def stop_capture_key(self):
+        """Stop capturing key/button"""
+        if self.capturing_key:
+            old_key = self.capturing_key
+            self.capturing_key = None
+            
+            if self.capture_listener:
+                self.capture_listener.stop()
+                self.capture_listener = None
+            if self.capture_mouse_listener:
+                self.capture_mouse_listener.stop()
+                self.capture_mouse_listener = None
+            
+            if old_key in self.set_button_widgets:
+                self.set_button_widgets[old_key].config(text="Set Button", state=tk.NORMAL)
+    
+    def set_keybind_value(self, keybind_name, value, input_type):
+        """Set the keybind value after capture"""
+        # Convert to appropriate format
+        if input_type == 'mouse':
+            # Mouse buttons
+            if value == 'left':
+                display_value = 'left'
+            elif value == 'right':
+                display_value = 'right'
+            elif value == 'middle':
+                display_value = 'middle'
+            elif value.startswith('button'):
+                display_value = value
+            else:
+                display_value = value
+        else:
+            # Keyboard keys
+            if value == 'space':
+                display_value = 'space'
+            elif value.startswith('f') and value[1:].isdigit():
+                display_value = value  # f1, f2, etc.
+            else:
+                display_value = value
+        
+        # Update the entry
+        if keybind_name in self.keybind_vars:
+            self.keybind_vars[keybind_name].set(display_value)
+            self.log(f"Set {keybind_name} to: {display_value}")
+            self.status_var.set(f"Set {keybind_name} to: {display_value}")
+        
+        # Stop capturing
+        self.stop_capture_key()
+    
     def on_closing(self):
         """Handle window closing"""
+        # Stop any active key capture
+        self.stop_capture_key()
+        
         if self.minimize_to_tray_var.get() and TRAY_AVAILABLE:
             self.root.withdraw()
             self.create_tray_icon()

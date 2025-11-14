@@ -1,0 +1,31 @@
+{
+    "keybinds": {
+        "melee": "e",
+        "jump": "space",
+        "aim": "right",
+        "fire": "left",
+        "emote": ".",
+        "macro": "button8",
+        "macro_alt": "button9",
+        "rapid_click": "j"
+    },
+    "timing": {
+        "fps": 115,
+        "jump_delay_ms": 1100,
+        "aim_melee_delay": 0.025,
+        "melee_hold_time": 0.05,
+        "use_emote_formula": true,
+        "emote_preparation_delay_manual": 0.1,
+        "rapid_fire_duration_ms": 230,
+        "rapid_fire_click_delay": 0.001,
+        "sequence_end_delay": 0.05,
+        "loop_delay": 0.0005,
+        "rapid_click_count": 10,
+        "rapid_click_delay": 0.05
+    },
+    "settings": {
+        "enable_macro_alt": true,
+        "log_file": "",
+        "enable_logging": false
+    }
+}
