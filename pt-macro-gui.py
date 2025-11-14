@@ -14,6 +14,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import importlib.util
+import platform
 
 # Try to import system tray support
 try:
@@ -44,6 +45,46 @@ spec.loader.exec_module(pt_macro)
 
 # Now we can access all functions and variables from pt-macro.py
 # We'll update the config variables dynamically
+
+
+def find_ee_log():
+    """Auto-detect EE.log file location on all platforms"""
+    system = platform.system()
+    possible_paths = []
+    
+    if system == 'Windows':
+        # Windows common locations
+        localappdata = os.environ.get('LOCALAPPDATA', '')
+        appdata = os.environ.get('APPDATA', '')
+        if localappdata:
+            possible_paths.append(os.path.join(localappdata, 'Warframe', 'EE.log'))
+        if appdata:
+            possible_paths.append(os.path.join(appdata, 'Warframe', 'EE.log'))
+        # Also check Program Files locations
+        program_files = os.environ.get('ProgramFiles', '')
+        if program_files:
+            possible_paths.append(os.path.join(program_files, 'Warframe', 'EE.log'))
+        program_files_x86 = os.environ.get('ProgramFiles(x86)', '')
+        if program_files_x86:
+            possible_paths.append(os.path.join(program_files_x86, 'Warframe', 'EE.log'))
+    elif system == 'Darwin':  # macOS
+        home = os.path.expanduser('~')
+        possible_paths.append(os.path.join(home, 'Library', 'Application Support', 'Warframe', 'EE.log'))
+        possible_paths.append(os.path.join(home, 'Library', 'Warframe', 'EE.log'))
+    else:  # Linux
+        home = os.path.expanduser('~')
+        possible_paths.append(os.path.join(home, '.local', 'share', 'Warframe', 'EE.log'))
+        possible_paths.append(os.path.join(home, 'Warframe', 'EE.log'))
+        possible_paths.append(os.path.join(home, '.steam', 'steam', 'steamapps', 'common', 'Warframe', 'EE.log'))
+        # Also check common Steam locations
+        possible_paths.append(os.path.join(home, '.steam', 'steam', 'steamapps', 'compatdata', '230410', 'pfx', 'drive_c', 'users', 'steamuser', 'AppData', 'Local', 'Warframe', 'EE.log'))
+    
+    # Check each path and return the first one that exists
+    for path in possible_paths:
+        if os.path.exists(path) and os.path.isfile(path):
+            return path
+    
+    return None
 
 
 class MacroConfig:
@@ -175,6 +216,14 @@ class MacroGUI:
         # Setup GUI
         self.setup_gui()
         self.load_config_to_gui()
+        
+        # Auto-detect EE.log if not set
+        if not self.log_file_var.get():
+            log_path = find_ee_log()
+            if log_path:
+                self.log_file_var.set(log_path)
+                self.log(f"Auto-detected EE.log: {log_path}")
+        
         self.apply_config_to_macro()
         
         # Start background check
@@ -684,6 +733,24 @@ Click 'Set Button' next to any keybind, then press the key/button you want to as
                            bd=5)
         log_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
+        def auto_detect_log():
+            """Auto-detect EE.log location"""
+            log_path = find_ee_log()
+            if log_path:
+                self.log_file_var.set(log_path)
+                self.log(f"Auto-detected EE.log: {log_path}")
+                self.status_var.set(f"Auto-detected EE.log: {log_path}")
+            else:
+                self.log("Could not auto-detect EE.log. Please browse manually.")
+                self.status_var.set("EE.log not found - please browse manually")
+                messagebox.showinfo("Not Found", 
+                                 "Could not automatically find EE.log.\n\n"
+                                 "Common locations:\n"
+                                 "Windows: %LOCALAPPDATA%\\Warframe\\EE.log\n"
+                                 "macOS: ~/Library/Application Support/Warframe/EE.log\n"
+                                 "Linux: ~/.local/share/Warframe/EE.log\n\n"
+                                 "Please use Browse to select it manually.")
+        
         def browse_log_file():
             filename = filedialog.askopenfilename(
                 title="Select EE.log file",
@@ -691,6 +758,13 @@ Click 'Set Button' next to any keybind, then press the key/button you want to as
             )
             if filename:
                 self.log_file_var.set(filename)
+                self.log(f"Selected EE.log: {filename}")
+        
+        auto_detect_btn = ttk.Button(log_row, text="Auto-detect", 
+                                    command=auto_detect_log,
+                                    style='Accent.TButton',
+                                    width=12)
+        auto_detect_btn.pack(side=tk.LEFT, padx=5)
         
         browse_btn = ttk.Button(log_row, text="Browse...", 
                                command=browse_log_file,
